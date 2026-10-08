@@ -1,0 +1,27 @@
+# Secrets — never commit
+.env
+
+# Database (regenerate with: python db_setup.py)
+*.duckdb
+*.duckdb.wal
+
+# Eval result artifacts
+eval_results_*.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+.python-version
+
+# Node / frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# OS
+.DS_Store
+Thumbs.db

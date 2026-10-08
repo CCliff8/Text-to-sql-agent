@@ -1,0 +1,319 @@
+{
+  "description": "TPC-H Text-to-SQL evaluation suite. Scale factor 0.1. Expected values calibrated against actual DB.",
+  "cases": [
+    {
+      "id": "q001",
+      "category": "count",
+      "question": "How many customers are in the database?",
+      "expected_answer": "15000",
+      "match_type": "numeric_exact"
+    },
+    {
+      "id": "q002",
+      "category": "count",
+      "question": "How many orders are there in total?",
+      "expected_answer": "150000",
+      "match_type": "numeric_exact"
+    },
+    {
+      "id": "q003",
+      "category": "count",
+      "question": "How many line items are in the database?",
+      "expected_answer": "600572",
+      "match_type": "numeric_fuzzy",
+      "tolerance_pct": 5
+    },
+    {
+      "id": "q004",
+      "category": "count",
+      "question": "How many suppliers are there?",
+      "expected_answer": "1000",
+      "match_type": "numeric_exact"
+    },
+    {
+      "id": "q005",
+      "category": "count",
+      "question": "How many distinct nations are in the database?",
+      "expected_answer": "25",
+      "match_type": "numeric_exact"
+    },
+    {
+      "id": "q006",
+      "category": "count",
+      "question": "How many distinct regions are there?",
+      "expected_answer": "5",
+      "match_type": "numeric_exact"
+    },
+    {
+      "id": "q007",
+      "category": "aggregation",
+      "question": "What is the total revenue (sum of extended price times (1 minus discount)) across all line items?",
+      "expected_answer": "20535072231",
+      "match_type": "numeric_fuzzy",
+      "tolerance_pct": 2
+    },
+    {
+      "id": "q008",
+      "category": "aggregation",
+      "question": "What is the average order total price?",
+      "expected_answer": "142377",
+      "match_type": "numeric_fuzzy",
+      "tolerance_pct": 5
+    },
+    {
+      "id": "q009",
+      "category": "aggregation",
+      "question": "What is the total quantity of all line items shipped?",
+      "expected_answer": "15334802",
+      "match_type": "numeric_fuzzy",
+      "tolerance_pct": 5
+    },
+    {
+      "id": "q010",
+      "category": "aggregation",
+      "question": "What is the maximum account balance among all customers?",
+      "expected_answer": "9999",
+      "match_type": "numeric_fuzzy",
+      "tolerance_pct": 2
+    },
+    {
+      "id": "q011",
+      "category": "filter",
+      "question": "How many orders have status 'F' (fulfilled)?",
+      "expected_answer": "72884",
+      "match_type": "numeric_fuzzy",
+      "tolerance_pct": 5
+    },
+    {
+      "id": "q012",
+      "category": "filter",
+      "question": "How many orders have priority '1-URGENT'?",
+      "expected_answer": "30111",
+      "match_type": "numeric_fuzzy",
+      "tolerance_pct": 5
+    },
+    {
+      "id": "q013",
+      "category": "filter",
+      "question": "How many customers have a positive account balance (greater than 0)?",
+      "expected_answer": "13596",
+      "match_type": "numeric_fuzzy",
+      "tolerance_pct": 5
+    },
+    {
+      "id": "q014",
+      "category": "filter",
+      "question": "How many line items were shipped by air (shipmode = 'AIR')?",
+      "expected_answer": "85689",
+      "match_type": "numeric_fuzzy",
+      "tolerance_pct": 5
+    },
+    {
+      "id": "q015",
+      "category": "filter",
+      "question": "How many parts have size greater than 40?",
+      "expected_answer": "3945",
+      "match_type": "numeric_fuzzy",
+      "tolerance_pct": 5
+    },
+    {
+      "id": "q016",
+      "category": "join",
+      "question": "How many customers are in the BUILDING market segment?",
+      "expected_answer": "3111",
+      "match_type": "numeric_fuzzy",
+      "tolerance_pct": 5
+    },
+    {
+      "id": "q017",
+      "category": "join",
+      "question": "Which region has the most customers? Just give the region name.",
+      "expected_answer": "AFRICA",
+      "match_type": "contains_string",
+      "case_insensitive": true
+    },
+    {
+      "id": "q018",
+      "category": "join",
+      "question": "How many orders were placed by customers from GERMANY?",
+      "expected_answer": "6029",
+      "match_type": "numeric_fuzzy",
+      "tolerance_pct": 10
+    },
+    {
+      "id": "q019",
+      "category": "join",
+      "question": "What is the total revenue from orders placed by customers in the ASIA region?",
+      "expected_answer": "4120876801",
+      "match_type": "numeric_fuzzy",
+      "tolerance_pct": 10
+    },
+    {
+      "id": "q020",
+      "category": "join",
+      "question": "How many distinct parts does each supplier supply on average? Round to 1 decimal place.",
+      "expected_answer": "80",
+      "match_type": "numeric_fuzzy",
+      "tolerance_pct": 10
+    },
+    {
+      "id": "q021",
+      "category": "ranking",
+      "question": "What are the top 3 nations by number of customers? List the nation names.",
+      "expected_answer": "IRAQ IRAN EGYPT",
+      "match_type": "contains_any",
+      "options": ["IRAQ", "IRAN", "EGYPT", "CHINA", "INDIA", "INDONESIA", "UNITED STATES", "BRAZIL"]
+    },
+    {
+      "id": "q022",
+      "category": "ranking",
+      "question": "Which customer market segment has the highest total order value? Just give the segment name.",
+      "expected_answer": "BUILDING",
+      "match_type": "contains_any",
+      "options": ["AUTOMOBILE", "BUILDING", "FURNITURE", "MACHINERY", "HOUSEHOLD"],
+      "case_insensitive": true
+    },
+    {
+      "id": "q023",
+      "category": "ranking",
+      "question": "What ship mode has the highest average discount? Just give the ship mode name.",
+      "expected_answer": "REG AIR",
+      "match_type": "contains_any",
+      "options": ["AIR", "FOB", "MAIL", "RAIL", "REG AIR", "SHIP", "TRUCK"],
+      "case_insensitive": true
+    },
+    {
+      "id": "q024",
+      "category": "ranking",
+      "question": "What is the name of the supplier with the highest account balance?",
+      "expected_answer": "Supplier#",
+      "match_type": "contains_string",
+      "case_insensitive": true
+    },
+    {
+      "id": "q025",
+      "category": "ranking",
+      "question": "Which order has the highest total price? Return just the order key.",
+      "expected_answer": "order key",
+      "match_type": "numeric_any"
+    },
+    {
+      "id": "q026",
+      "category": "time",
+      "question": "How many orders were placed in 1994?",
+      "expected_answer": "22958",
+      "match_type": "numeric_fuzzy",
+      "tolerance_pct": 5
+    },
+    {
+      "id": "q027",
+      "category": "time",
+      "question": "What year had the most orders placed? Just give the year.",
+      "expected_answer": "1994",
+      "match_type": "contains_any",
+      "options": ["1992", "1993", "1994", "1995", "1996", "1997", "1998"]
+    },
+    {
+      "id": "q028",
+      "category": "time",
+      "question": "How many line items were shipped in January 1995?",
+      "expected_answer": "7898",
+      "match_type": "numeric_fuzzy",
+      "tolerance_pct": 10
+    },
+    {
+      "id": "q029",
+      "category": "time",
+      "question": "What is the total revenue from line items shipped in 1996?",
+      "expected_answer": "3121621566",
+      "match_type": "numeric_fuzzy",
+      "tolerance_pct": 10
+    },
+    {
+      "id": "q030",
+      "category": "time",
+      "question": "How many orders were placed in Q1 (January through March) of 1995?",
+      "expected_answer": "5608",
+      "match_type": "numeric_fuzzy",
+      "tolerance_pct": 10
+    },
+    {
+      "id": "q031",
+      "category": "groupby",
+      "question": "How many different order statuses exist?",
+      "expected_answer": "3",
+      "match_type": "numeric_exact"
+    },
+    {
+      "id": "q032",
+      "category": "groupby",
+      "question": "How many different ship modes exist?",
+      "expected_answer": "7",
+      "match_type": "numeric_exact"
+    },
+    {
+      "id": "q033",
+      "category": "groupby",
+      "question": "How many parts are in each brand? How many distinct brands are there?",
+      "expected_answer": "25",
+      "match_type": "numeric_exact"
+    },
+    {
+      "id": "q034",
+      "category": "groupby",
+      "question": "What is the total number of orders per order status? Which status has the most orders?",
+      "expected_answer": "O",
+      "match_type": "contains_string",
+      "case_insensitive": false
+    },
+    {
+      "id": "q035",
+      "category": "groupby",
+      "question": "What is the average discount rate per ship mode? Which ship mode has the lowest average discount?",
+      "expected_answer": "AIR",
+      "match_type": "contains_any",
+      "options": ["AIR", "FOB", "MAIL", "RAIL", "REG AIR", "SHIP", "TRUCK"],
+      "case_insensitive": true
+    },
+    {
+      "id": "q036",
+      "category": "subquery",
+      "question": "How many customers have placed more than 20 orders?",
+      "expected_answer": "2215",
+      "match_type": "numeric_fuzzy",
+      "tolerance_pct": 10
+    },
+    {
+      "id": "q037",
+      "category": "subquery",
+      "question": "What percentage of customers have never placed an order? Round to 1 decimal place.",
+      "expected_answer": "33.3",
+      "match_type": "numeric_fuzzy",
+      "tolerance_pct": 10
+    },
+    {
+      "id": "q038",
+      "category": "subquery",
+      "question": "How many parts have a retail price above the average retail price?",
+      "expected_answer": "10000",
+      "match_type": "numeric_fuzzy",
+      "tolerance_pct": 10
+    },
+    {
+      "id": "q039",
+      "category": "subquery",
+      "question": "How many suppliers have total supply cost above the average supplier supply cost?",
+      "expected_answer": "494",
+      "match_type": "numeric_fuzzy",
+      "tolerance_pct": 10
+    },
+    {
+      "id": "q040",
+      "category": "complex",
+      "question": "What is the total revenue lost due to discounts on line items shipped in 1995? (Revenue lost = sum of extended_price * discount)",
+      "expected_answer": "164932699",
+      "match_type": "numeric_fuzzy",
+      "tolerance_pct": 10
+    }
+  ]
+}
