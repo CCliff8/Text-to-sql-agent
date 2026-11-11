@@ -1,34 +1,14 @@
-# Frontend — React + Vite
+# Frontend
 
-React frontend for the Text-to-SQL Analyst Agent.
-
-## Stack
-
-- **React 19** — UI
-- **Vite** — dev server and build tool
-- **Tailwind CSS v4** — styling
-- **Recharts** — interactive bar charts
-
-## Setup
+React 19 + Vite + Tailwind CSS v4 + Recharts. Talks to the FastAPI backend in the parent folder
+(`/ask/stream`, `/config`), proxied by Vite during development (see `vite.config.js`).
 
 ```bash
 npm install
-npm run dev
+npm run dev      # http://localhost:5173 (start the backend on :8000 first)
+npm run lint     # oxlint
+npm run build    # production bundle in dist/
 ```
 
-Runs on **http://localhost:5173**. Requires the FastAPI backend running on port 8000 (see root README).
-
-## Structure
-
-```
-src/
-├── App.jsx                  # Main page, search bar, state management
-├── index.css                # Tailwind import + base styles
-└── components/
-    ├── AnswerCard.jsx        # Answer text + Recharts horizontal bar chart
-    └── TracePanel.jsx        # Collapsible agent trace (schema, SQL, tables)
-```
-
-## API
-
-The frontend proxies all `/ask` and `/health` requests to `http://localhost:8000` via Vite's dev proxy — no CORS configuration needed during development.
+Layout: `src/App.jsx` (page + state), `src/components/` (answer card, reasoning trace),
+`src/lib/` (API client with SSE streaming, number formatting, SQL highlighting).

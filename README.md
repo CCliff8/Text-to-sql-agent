@@ -1,207 +1,119 @@
 # Text-to-SQL Analyst Agent
 
-An AI agent that answers business questions in plain English by autonomously inspecting a database schema, writing SQL, executing it, and self-correcting on errors.
+Ask business questions in plain English. The agent inspects the schema, writes SQL, runs it in a sandbox, fixes its own errors, and answers with a table, a chart and the SQL behind it.
 
-Built with a Python/FastAPI backend and a React frontend.
-
----
-
-## What it does
-
-1. You type a question: *"Who are the top 5 customers by total order value?"*
-2. A **router** classifies the complexity and picks the cheapest model that can handle it
-3. The **agent** calls tools in a loop — inspects the schema, writes SQL, runs it, self-corrects if it fails
-4. You get a plain-English answer with an interactive bar chart
-5. You can expand **"Show SQL"** and **"Show how I got this"** to see every step the agent took
+**Stack:** Python · FastAPI (SSE streaming) · DuckDB · Anthropic Claude (Haiku 4.5 + Sonnet 4.6) · React 19 · Vite · Tailwind v4 · Recharts
 
 ---
 
-## Architecture
+## Features
+
+- **Cost-aware routing:** a heuristic router sends simple questions to Haiku and complex ones to Sonnet. If Haiku has not finished within 4 turns, the same conversation escalates to Sonnet.
+- **Self-correcting loop:** the schema is already in the prompt (and prompt-cached). The agent calls `run_sql` or `sample_table` and retries failed queries, up to 5 errors.
+- **Sandboxed SQL:** one `SELECT`/`EXPLAIN` per query, read-only connection, external access disabled, 15 s timeout, 100-row cap.
+- **Answer verification:** numbers in the answer are cross-checked against the query result, and the UI warns when any can't be matched.
+- **Live UI:** streamed progress, follow-up questions ("and for 1996?"), results table, bar chart, CSV export, copyable SQL, and a "how I got this" trace.
+- **Cost tracking:** every response includes token usage and an estimated `cost_usd`.
+- **Evals and tests:** a 40-case benchmark with gold SQL, plus 144 pytest tests and CI.
+
+## How it works
 
 ```
-User question
-     │
-     ▼
-┌─────────────┐
-│  router.py  │  Classifies complexity
-│             │  Simple  → Haiku 4.5   (fast, cheap)
-└──────┬──────┘  Complex → Sonnet 4.6  (stronger reasoning)
-       │
-       ▼
-┌─────────────────────────────────────────┐
-│              agent.py                   │
-│                                         │
-│  Proactive routing: right model from    │
-│  turn 1, no wasted calls                │
-│                                         │
-│  Reactive fallback: if Haiku struggles  │
-│  after 3 turns → hands off to Sonnet,   │
-│  same conversation, no context lost     │
-│                                         │
-│  Tool loop:                             │
-│    1. get_schema  → understand the DB   │
-│    2. sample_table → check data formats │
-│    3. run_sql     → execute query       │
-│    4. self-correct on SQL errors        │
-│    5. return plain-English answer       │
-└──────────────────┬──────────────────────┘
-                   │
-                   ▼
-         ┌──────────────────┐
-         │    tools.py      │
-         │  Read-only       │
-         │  DuckDB (SQL)    │
-         │  SELECT only     │
-         └────────┬─────────┘
-                  │
-                  ▼
-         ┌──────────────────┐
-         │   tpch.duckdb    │
-         │  TPC-H benchmark │
-         │  8 tables        │
-         │  600K+ rows      │
-         └──────────────────┘
+question ──► router.py ──► agent.py (tool loop) ──► tools.py ──► tpch.duckdb
+             Haiku / Sonnet   run_sql, sample_table   sandbox       TPC-H, 8 tables
+                              │                                     
+                              └─► verify.py: check numbers ──► answer + table + chart
 ```
 
----
-
-## Tech stack
-
-| Layer | Technology |
+| File | Role |
 |---|---|
-| LLM API | Anthropic Claude (Haiku 4.5 + Sonnet 4.6) |
-| Backend | FastAPI + Uvicorn |
-| Database | DuckDB (embedded, zero config) |
-| Dataset | TPC-H benchmark (scale 0.1) |
-| Frontend | React 19 + Vite |
-| Styling | Tailwind CSS v4 |
-| Charts | Recharts |
+| `api.py` | FastAPI: `POST /ask`, `POST /ask/stream` (SSE), `GET /config` |
+| `agent.py` | Tool loop, routing, escalation, caching, usage and cost |
+| `router.py` | Complexity classifier |
+| `tools.py` | Tool definitions and sandboxed SQL execution |
+| `verify.py` | Answer-vs-result number check |
+| `config.py` | Models, limits, pricing, suggestions (single source of truth) |
+| `db_setup.py` | Loads TPC-H (scale 0.1) into DuckDB |
+| `evals.py`, `compare_runs.py` | Benchmark runner and before/after comparison |
+| `frontend/` | React app (`components/`, `lib/` for SSE client, formatting, SQL highlighter) |
 
----
+## Quick start
 
-## Prerequisites
-
-- **Python 3.9+**
-- **Node.js 18+** and npm
-- An **Anthropic API key** — get one at [console.anthropic.com](https://console.anthropic.com)
-
----
-
-## Setup
-
-### 1. Clone the repo
+Requires Python 3.9+, Node 18+ and an [Anthropic API key](https://console.anthropic.com).
 
 ```bash
-git clone https://github.com/CCliff8/Text_to_sql_agent.git
-cd Text_to_sql_agent
-```
+git clone https://github.com/CCliff8/Text-to-sql-agent.git
+cd Text-to-sql-agent
 
-### 2. Install Python dependencies
-
-```bash
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
+
+cp .env.example .env          # then set ANTHROPIC_API_KEY=sk-ant-...
+python db_setup.py            # one-off, ~27 MB, needs network for DuckDB's tpch extension
+
+cd frontend && npm install && cd ..
 ```
 
-### 3. Add your API key
+Run two terminals:
 
 ```bash
-cp .env.example .env
+python3 -m uvicorn api:app --port 8000 --reload     # backend (repo root)
+cd frontend && npm run dev                          # frontend
 ```
 
-Open `.env` and replace the placeholder with your real key:
+Open <http://localhost:5173>.
 
-```
-ANTHROPIC_API_KEY=sk-ant-...
-```
+## Configuration
 
-### 4. Load the database
+Defaults live in `config.py`. Override them in `.env`:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | none | Required |
+| `HAIKU_MODEL` / `SONNET_MODEL` | Haiku 4.5 / Sonnet 4.6 | Swap model versions |
+| `QUERY_TIMEOUT_S` | `15` | Per-query timeout |
+| `DUCKDB_MEMORY_LIMIT` / `DUCKDB_THREADS` | `1GB` / `2` | DuckDB resources |
+| `RATE_LIMIT_PER_MIN` | `20` | Per-IP limit, `0` disables |
+| `CORS_ORIGINS` | `http://localhost:5173` | Comma-separated |
+
+## Security
+
+- SQL runs on a read-only DuckDB connection with external access disabled (no `read_csv`, `glob` or HTTP) and a locked configuration.
+- The API rate-limits per IP, caps question length (500 chars) and never returns internal error text.
+- **There is no authentication.** Every request spends API credits, so keep it local or put it behind an authenticating reverse proxy.
+
+## Tests
 
 ```bash
-python db_setup.py
+pip install -r requirements-dev.txt
+python -m pytest
 ```
 
-Downloads and loads the TPC-H benchmark into a local `tpch.duckdb` file (~27 MB). Only needs to run once.
+The suite covers the sandbox, router, verifier, agent loop (with a scripted fake client), API, and eval harness. One test runs every gold query in `test_cases.json` against your local `tpch.duckdb`. CI runs pytest on Python 3.9 and 3.12, plus frontend lint and build.
 
-### 5. Install frontend dependencies
+## Evaluations
+
+40 cases across categories. A case passes only if the **answer text** matches **and** at least one query the agent ran returns the same rows as the gold SQL, so a lucky number doesn't count.
 
 ```bash
-cd frontend
-npm install
-```
-
----
-
-## Running the app
-
-You need two terminals.
-
-**Terminal 1 — Python backend:**
-
-```bash
-cd text_to_sql
-python3 -m uvicorn api:app --port 8000 --reload
-```
-
-**Terminal 2 — React frontend:**
-
-```bash
-cd text_to_sql/frontend
-npm run dev
-```
-
-Open **http://localhost:5173** in your browser.
-
----
-
-## Project structure
-
-```
-text_to_sql/
-├── api.py              # FastAPI server — exposes POST /ask
-├── agent.py            # Agentic loop with two-layer model routing
-├── router.py           # Heuristic complexity classifier
-├── tools.py            # Tool definitions + safe SQL execution
-├── evals.py            # Evaluation framework (40 test cases)
-├── compare_runs.py     # Compare two eval runs (before/after)
-├── db_setup.py         # DuckDB + TPC-H data loader
-├── test_cases.json     # 40 calibrated Q&A test cases
-├── requirements.txt    # Python dependencies
-├── .env.example        # Template for environment variables
-└── frontend/           # React app
-    ├── src/
-    │   ├── App.jsx           # Main page + state management
-    │   └── components/
-    │       ├── AnswerCard.jsx # Answer text + Recharts bar chart
-    │       └── TracePanel.jsx # Step-by-step agent trace
-    ├── vite.config.js        # Vite + Tailwind + API proxy
-    └── package.json
-```
-
-
-## Running evaluations
-
-The project includes a 40-case benchmark with verified expected answers.
-
-```bash
-# Full suite (~$0.40, ~10 min)
-python evals.py
-
-# Specific cases only
-python evals.py q001 q002 q003
-
-# Compare two runs
+python evals.py                    # full suite, 4 workers, temperature 0
+python evals.py q001 q002          # specific cases
+python evals.py --runs 3           # repeat to find flaky cases
+python evals.py --workers 1 -v     # sequential, verbose
 python compare_runs.py eval_results_before.json eval_results_after.json
 ```
 
----
+Reports break accuracy down by category and router decision (Haiku vs Sonnet) and include real cost per question. Run it once to measure your own numbers, since prices in `config.py` are estimates.
 
-## Cost guide
+## Troubleshooting
 
-| Run | Cases | Estimated cost |
-|---|---|---|
-| Quick smoke test | 5 | ~$0.02 |
-| Full eval suite | 40 | ~$0.40 |
+| Symptom | Fix |
+|---|---|
+| "The database has not been set up yet" | `python db_setup.py` |
+| "API key is missing or invalid" | Check `ANTHROPIC_API_KEY` in `.env`, restart backend |
+| Frontend network errors | Backend must be running on port 8000 |
+| Queries time out | Raise `QUERY_TIMEOUT_S` or ask a narrower question |
 
-The two-layer router keeps costs low — roughly half of queries go to Haiku, which is significantly cheaper than Sonnet.
+## License
 
----
+See [LICENSE](LICENSE).

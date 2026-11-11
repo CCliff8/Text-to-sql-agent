@@ -1,34 +1,20 @@
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts'
+import { formatNumeric, isIdLikeColumn, isNumericCol, toNumber } from '../lib/format'
+
+const MAX_CHART_ROWS = 15
 
 function getTableData(result) {
-  const steps = result.steps || []
-  const sqlSteps = steps.filter(s => s.tool === 'run_sql')
+  const sqlSteps = (result.steps || []).filter(s => s.tool === 'run_sql')
   if (!sqlSteps.length) return null
   try {
-    const last = sqlSteps[sqlSteps.length - 1]
-    const data = JSON.parse(last.result)
+    const data = JSON.parse(sqlSteps[sqlSteps.length - 1].result)
     if (data.error || !data.rows?.length || !data.columns?.length) return null
-    return { columns: data.columns, rows: data.rows }
+    return { columns: data.columns, rows: data.rows, truncated: !!data.truncated }
   } catch {
     return null
   }
-}
-
-function isNumericCol(rows, col) {
-  return rows.slice(0, 5).every(r => {
-    const v = String(r[col] ?? '').replace(/,/g, '').replace(/\$/g, '').trim()
-    return v !== '' && !isNaN(parseFloat(v))
-  })
-}
-
-function formatNumeric(value) {
-  const num = parseFloat(String(value ?? '').replace(/,/g, '').replace(/\$/g, ''))
-  if (isNaN(num)) return String(value ?? '')
-  return Number.isInteger(num)
-    ? num.toLocaleString()
-    : num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 function downloadCSV(columns, rows, answer) {
@@ -70,32 +56,49 @@ const CustomTooltip = ({ active, payload, label }) => {
   )
 }
 
-export default function AnswerCard({ result }) {
+export default function AnswerCard({ result, question }) {
   const tableData = getTableData(result)
 
+  // Numeric columns are right-aligned; identifier-like ones (keys, years) are not formatted as quantities.
   const numericCols = tableData
     ? Object.fromEntries(tableData.columns.map(c => [c, isNumericCol(tableData.rows, c)]))
     : {}
+  const formattedCols = tableData
+    ? Object.fromEntries(tableData.columns.map(c => [c, numericCols[c] && !isIdLikeColumn(c)]))
+    : {}
 
   const chartable = tableData &&
+    tableData.rows.length >= 2 &&
     tableData.columns.length === 2 &&
-    numericCols[tableData.columns[1]]
+    numericCols[tableData.columns[1]] &&
+    !isIdLikeColumn(tableData.columns[1])
 
-  const chartRows = chartable
+  const allChartRows = chartable
     ? tableData.rows.map(r => ({
         name: String(r[tableData.columns[0]]),
-        value: parseFloat(String(r[tableData.columns[1]]).replace(/,/g, '').replace(/\$/g, '')),
+        value: toNumber(r[tableData.columns[1]]),
       }))
     : []
+  const chartRows = allChartRows.slice(0, MAX_CHART_ROWS)
+
+  const unverified = result.answer_check?.verified === false
 
   return (
     <div className="mt-6 bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
 
       {/* Answer text */}
       <div className="px-8 pt-7 pb-5">
+        {question && (
+          <p className="text-[12px] text-gray-400 mb-2">{question}</p>
+        )}
         <p className="text-[17px] font-semibold text-gray-900 leading-snug">
           {result.answer}
         </p>
+        {unverified && (
+          <p role="note" className="mt-3 text-[12px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            Some numbers in this answer could not be matched to the query results. Check the table or the SQL before relying on them.
+          </p>
+        )}
       </div>
 
       {/* Table */}
@@ -105,10 +108,12 @@ export default function AnswerCard({ result }) {
           {/* Toolbar */}
           <div className="flex items-center justify-between px-6 py-3 bg-gray-50 border-b border-gray-100">
             <span className="text-[11px] font-bold tracking-widest text-gray-400 uppercase">
-              {tableData.rows.length} row{tableData.rows.length !== 1 ? 's' : ''}
+              {tableData.truncated
+                ? `First ${tableData.rows.length} rows (more exist)`
+                : `${tableData.rows.length} row${tableData.rows.length !== 1 ? 's' : ''}`}
             </span>
             <button
-              onClick={() => downloadCSV(tableData.columns, tableData.rows, result.answer)}
+              onClick={() => downloadCSV(tableData.columns, tableData.rows, question || result.answer)}
               className="flex items-center gap-1.5 text-[12px] font-medium text-gray-500 hover:text-blue-600 border border-gray-200 hover:border-blue-400 bg-white hover:bg-blue-50/60 rounded-lg px-3 py-1.5 transition-all cursor-pointer shadow-sm"
             >
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -123,11 +128,13 @@ export default function AnswerCard({ result }) {
           {/* Table body */}
           <div className="overflow-x-auto">
             <table className="w-full">
+              <caption className="sr-only">Query results</caption>
               <thead>
                 <tr>
                   {tableData.columns.map(col => (
                     <th
                       key={col}
+                      scope="col"
                       className={`px-6 py-2.5 text-[10.5px] font-bold tracking-wider text-gray-500 uppercase bg-gray-50 border-b border-gray-100 ${
                         numericCols[col] ? 'text-right' : 'text-left'
                       }`}
@@ -152,7 +159,7 @@ export default function AnswerCard({ result }) {
                           numericCols[col] ? 'text-right tabular-nums font-medium' : 'text-left'
                         }`}
                       >
-                        {numericCols[col] ? formatNumeric(row[col]) : String(row[col] ?? '')}
+                        {formattedCols[col] ? formatNumeric(row[col]) : String(row[col] ?? '')}
                       </td>
                     ))}
                   </tr>
@@ -167,7 +174,7 @@ export default function AnswerCard({ result }) {
       {chartable && (
         <div className="border-t border-gray-100 px-6 pt-5 pb-7">
           <p className="text-[10.5px] font-bold tracking-widest text-gray-400 uppercase mb-4">
-            Chart
+            Chart{allChartRows.length > MAX_CHART_ROWS ? ` (top ${MAX_CHART_ROWS} of ${allChartRows.length})` : ''}
           </p>
           <ResponsiveContainer width="100%" height={chartRows.length * 52 + 16}>
             <BarChart

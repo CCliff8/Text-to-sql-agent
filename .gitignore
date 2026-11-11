@@ -25,3 +25,6 @@ frontend/.vite/
 # OS
 .DS_Store
 Thumbs.db
+
+# Tests / tooling
+.pytest_cache/

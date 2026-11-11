@@ -8,6 +8,7 @@ export default defineConfig({
     proxy: {
       '/ask':    'http://localhost:8000',
       '/health': 'http://localhost:8000',
+      '/config': 'http://localhost:8000',
     },
   },
 })

@@ -1,3 +1,5 @@
+import { SqlCode } from '../lib/sql'
+
 function extractTables(sql) {
   if (!sql) return []
   const matches = [...sql.matchAll(/(?:FROM|JOIN)\s+([a-zA-Z_]\w*)/gi)]
@@ -54,11 +56,11 @@ function SampleStep({ input, result }) {
 
 function SqlStep({ input, result }) {
   const query = input?.query?.trim() || ''
-  let rowCount = null, isError = false, errorMsg = ''
+  let rowCount = null, truncated = false, isError = false, errorMsg = ''
   try {
     const d = JSON.parse(result)
     if (d.error) { isError = true; errorMsg = d.error }
-    else rowCount = d.row_count ?? d.rows?.length
+    else { rowCount = d.row_count ?? d.rows?.length; truncated = !!d.truncated }
   } catch {}
   return (
     <>
@@ -68,13 +70,13 @@ function SqlStep({ input, result }) {
           ? 'bg-red-50 border border-red-200 text-red-800'
           : 'bg-gray-50 border border-gray-200 text-gray-800'
       }`}>
-        {query}
+        <SqlCode sql={query} />
       </pre>
       {isError
         ? <p className="text-[12px] text-red-500 mt-1.5">Error: {errorMsg}</p>
         : rowCount != null && (
           <p className="text-[12px] text-gray-400 mt-1.5">
-            <strong className="text-gray-500">{rowCount}</strong> rows returned
+            <strong className="text-gray-500">{rowCount}{truncated ? '+' : ''}</strong> rows returned{truncated ? ' (truncated)' : ''}
           </p>
         )
       }
@@ -82,11 +84,11 @@ function SqlStep({ input, result }) {
   )
 }
 
-export default function TracePanel({ steps, sql }) {
+export default function TracePanel({ steps, sql, id }) {
   const tables = extractTables(sql)
 
   return (
-    <div className="mt-3 bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+    <div id={id} className="mt-3 bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-2 bg-gray-50 border-b border-gray-100 px-5 py-3">
         <span className="text-[13.5px] font-semibold text-gray-800">How I got this</span>
